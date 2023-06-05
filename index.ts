@@ -159,7 +159,7 @@ if (arg === tokenListUrls_[i].key) {
  //}
  fetchAllTokenListDetails(ChainId.ETHEREUM);
  
-
+console.log('deep')
 // // Retrieve token list details from Redis
 // async function retrieveTokenListDetailsFromRedis(list: any) {
 //   try {
