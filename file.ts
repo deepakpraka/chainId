@@ -1,4 +1,4 @@
- import axios from 'axios';
+import axios from 'axios';
  import Redis from 'ioredis';
 import { createClient } from 'redis';
 import dotenv from "dotenv";
