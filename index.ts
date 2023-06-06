@@ -1,9 +1,18 @@
- import axios from 'axios';
+import axios from 'axios';
  import Redis from 'ioredis';
 import { createClient } from 'redis';
 import dotenv from "dotenv";
 dotenv.config();
 
+enum ChainId {
+  SOLANA = 0,
+  APTOS = 1,
+  POLYGON = 2,
+  BINANCE = 3,
+  ETHEREUM = 4,
+  KLAYTN = 5,
+  FANTOM = 6,
+}
 
 
  
@@ -23,39 +32,51 @@ redisClient.connect().then(()=>{
     'https://raw.githubusercontent.com/0xAnto/token-lists/main/fantom.json',
   ]
   const tokenListUrls_ = [
-  
-    {url : 'https://cache.jup.ag/tokens',key:"solana"} ,
-    {url : 'https://raw.githubusercontent.com/hippospace/aptos-coin-list/main/typescript/src/defaultList.mainnet.json',key:"aptos"} ,
-    {url :'https://raw.githubusercontent.com/0xAnto/token-lists/main/polygon.json',key:"polygon"} ,
-    {url :'https://raw.githubusercontent.com/0xAnto/token-lists/main/bsc.json',key:"binance"} ,
-    {url : 'https://raw.githubusercontent.com/0xAnto/token-lists/main/ethereum.json',key:"ethereum"} ,
-    {url : 'https://raw.githubusercontent.com/0xAnto/token-lists/main/klaytn.json',key:"klaytn"} ,
-    {url : 'https://raw.githubusercontent.com/0xAnto/token-lists/main/fantom.json',key:"fantom"} ,
-   ]
+    { url: 'https://cache.jup.ag/tokens', key: ChainId.SOLANA },
+    { url: 'https://raw.githubusercontent.com/hippospace/aptos-coin-list/main/typescript/src/defaultList.mainnet.json', key: ChainId.APTOS },
+    { url: 'https://raw.githubusercontent.com/0xAnto/token-lists/main/polygon.json', key: ChainId.POLYGON },
+    { url: 'https://raw.githubusercontent.com/0xAnto/token-lists/main/bsc.json', key: ChainId.BINANCE },
+    { url: 'https://raw.githubusercontent.com/0xAnto/token-lists/main/ethereum.json', key: ChainId.ETHEREUM },
+    { url: 'https://raw.githubusercontent.com/0xAnto/token-lists/main/klaytn.json', key: ChainId.KLAYTN },
+    { url: 'https://raw.githubusercontent.com/0xAnto/token-lists/main/fantom.json', key: ChainId.FANTOM },
+  ];
   
     
   // Function to fetch token list details from a specific URL
-  async function fetchTokenListDetails(url: string) {
+  async function fetchTokenListDetails(url: any) {
     try {
       const response = await axios.get(url);
-      //console.log("Get :",response);
+      // console.log("Get :",response.data);
 
       const tokenListDetails = response.data;
+      const transformeddetails = tokenListDetails.map((value: any )=>{
+        //console.log("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",value.chainId)
+        return {
+          address: value.address,
+          chainId:value.chainId,
+          symbol:value.symbol,
+          logoURI:value.logoURI,
+          coingecko_id:value.coingeckoId,
+          decimals:value.decimals,
+          
 
-      //console.log(tokenListDetails);
+        }
+      })
+      
 
-  
-      //console.log(`Token list details for URL ${url}:`, tokenListDetails);
-      return tokenListDetails; 
-    } catch (error) {
-      console.error(`Failed to fetch token list details from URL ${url}:`, error);
-      return null; 
-    }
-  }
-  
+            console.log(`Token list details for URL ${url}:`, transformeddetails);
+            return transformeddetails; 
+          } catch (error) {
+            console.error(`Failed to fetch token list details from URL ${url}:`, error);
+            return null; 
+          }
+        }
+        
 
-  // Fetch token list details from a specific URL and store in Redis
-async function fetchAndStoreTokenListDetails(list: any) {
+
+//   // Fetch token list details from a specific URL and store in Redis
+async function fetchAndStoreTokenListDetails(list: { url: string, key: ChainId }) {
+
   const tokenListDetails = await fetchTokenListDetails(list.url);
   if (tokenListDetails) {
     await storeTokenListDetailsInRedis(list.key, tokenListDetails);
@@ -63,94 +84,109 @@ async function fetchAndStoreTokenListDetails(list: any) {
    // console.error(`Failed to fetch token list details from URL ${url}.`);
   }
 }
+    
 
-// Store token list details in Redis
-async function storeTokenListDetailsInRedis(list: any, tokenListDetails: any) {
+
+// // Store token list details in Redis
+async function storeTokenListDetailsInRedis(key: ChainId, tokenListDetails: any) {
   try {
-    const key = `tokenList:${list}`;
+    const redisKey = `tokenList:${key}`;
+
     const value = JSON.stringify(tokenListDetails);
-    const result = await redisClient.set(key, value);
+    await redisClient.set(redisKey, value);
+
     // console.log(`Token list details for URL ${list} stored in Redis.`);
      
   } catch (error) {
-    console.error(`Failed to store token list details for URL ${list} in Redis:`, error);
+    console.error(`Failed to store token list details for key ${key} in Redis:`, error);
   }
-}
 
-// Fetch all token list details and store in Redis
-async function fetchAllTokenListDetails(arg : number) {
-  for (let i = 0; i < tokenListUrls_.length; i++) {
+  }
+
+
+
+
+// // Fetch all token list details and store in Redis
+async function fetchAllTokenListDetails(arg : ChainId) {
+  
+    for (let i = 0; i < tokenListUrls_.length; i++) {
     await fetchAndStoreTokenListDetails(tokenListUrls_[i]);
-      switch (tokenListUrls_[arg]){
-        case tokenListUrls_[0] : {
-           const test = await axios.get(tokenListUrls_[0].url)
-           console.log("solana :",test)
-          break;
-        }
-        case tokenListUrls_[1] : {
-          const test = await axios.get(tokenListUrls_[1].url)
-           console.log(test)
-           break;
-        }
-          case tokenListUrls_[2] : {
-            const test = await axios.get(tokenListUrls_[2].url)
-            console.log("case 2 ", test)
-            break;
-        }
-        case tokenListUrls_[3] : {
-          const test = await axios.get(tokenListUrls_[3].url)
-          console.log("case 3 ", test)
-          break;
-      }
-      case tokenListUrls_[4] : {
-        const test = await axios.get(tokenListUrls_[4].url)
-        console.log("case 4 ", test)
-        break;
-    }
-    case tokenListUrls_[5] : {
-      const test = await axios.get(tokenListUrls_[5].url)
-      console.log("case 5 ", test)
-      break;
-  }
-  case tokenListUrls_[6] : {
-    const test = await axios.get(tokenListUrls_[6].url)
-    console.log("case 6 ", test)
-    break;
-    }
-    default :
-    console.log("There is no chain id (invalid case) ")
-    
-  }
-}
-}
-
-fetchAllTokenListDetails(2);
-// Retrieve token list details from Redis
-async function retrieveTokenListDetailsFromRedis(list: any) {
+if (arg === tokenListUrls_[i].key) {
   try {
-    const key = `tokenList:${list}`;
-   // console.log("key",key)
-    const value = await redisClient.get(key);
-   if (value) {
-      const tokenListDetails = value;
-      // console.log(`Token list details for URL ${url} retrieved from Redis:`, tokenListDetails);
-      return tokenListDetails;
-    } else {
-     // console.log(`Token list details not found in Redis for URL ${url}.`);
-      return null;
-    }
+    const response = await axios.get(tokenListUrls_[i].url);
+    console.log(`Response for URL ${tokenListUrls_[i].url}:`, response.data);
   } catch (error) {
-    console.error(`Failed to retrieve token list details from Redis for URL ${list}:`, error);
-    return null;
+    console.error(`Failed to fetch data for URL ${tokenListUrls_[i].url}:`, error);
   }
 }
-
-// Example usage
-async function retrieveAllTokenListDetailsFromRedis() {
-  for (let i = 0; i < tokenListUrls_.length; i++) {
-    const url = tokenListUrls_[i];
-    await retrieveTokenListDetailsFromRedis(url);
-  }
+}
 }
 
-retrieveAllTokenListDetailsFromRedis();
+//       switch (tokenListUrls_[arg]){
+//         case tokenListUrls_[0] : {
+//            const test = await axios.get(tokenListUrls_[0].url)
+//           break;
+//         }
+//         case tokenListUrls_[1] : {
+//           const test = await axios.get(tokenListUrls_[1].url)
+//            break;
+//         }
+//           case tokenListUrls_[2] : {
+//             const test = await axios.get(tokenListUrls_[2].url)
+//             break;
+//         }
+//         case tokenListUrls_[3] : {
+//           const test = await axios.get(tokenListUrls_[3].url)
+//           break;
+//       }
+//       case tokenListUrls_[4] : {
+//         const test = await axios.get(tokenListUrls_[4].url)
+//         break;
+//     }
+//     case tokenListUrls_[5] : {
+//       const test = await axios.get(tokenListUrls_[5].url)
+//       break;
+//   }
+//   case tokenListUrls_[6] : {
+//     const test = await axios.get(tokenListUrls_[6].url)
+//     break;
+//     }
+//     default :
+//     console.log("There is no chain id (invalid case) ")
+    
+//   }
+// }
+ //}
+ fetchAllTokenListDetails(ChainId.ETHEREUM);
+ 
+
+// // Retrieve token list details from Redis
+// async function retrieveTokenListDetailsFromRedis(list: any) {
+//   try {
+//     const key = `tokenList:${list}`;
+//    // console.log("key",key)
+//     const value = await redisClient.get(key);
+//    if (value) {
+//       const tokenListDetails = value;
+//       // console.log(`Token list details for URL ${url} retrieved from Redis:`, tokenListDetails);
+//       return tokenListDetails;
+//     } else {
+//      // console.log(`Token list details not found in Redis for URL ${url}.`);
+//       return null;
+//     }
+//   } catch (error) {
+//     console.error(`Failed to retrieve token list details from Redis for URL ${list}:`, error);
+//     return null;
+//   }
+// }
+//       // Transform the token list details using the map function
+      
+// // Example usage
+// async function retrieveAllTokenListDetailsFromRedis() {
+//   for (let i = 0; i < tokenListUrls_.length; i++) {
+//     const url = tokenListUrls_[i];
+//     await retrieveTokenListDetailsFromRedis(url);
+//   }
+// }
+
+// retrieveAllTokenListDetailsFromRedis();
